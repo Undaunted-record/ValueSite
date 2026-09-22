@@ -1,0 +1,67 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+
+interface Props {
+  label: string;
+  value: number;
+  defaultValue: number;
+  min: number;
+  max: number;
+  step: number;
+  suffix: string;
+  scale?: number;
+  onChange: (value: number) => void;
+}
+
+export function AssumptionSlider({ label, value, defaultValue, min, max, step, suffix, scale = 1, onChange }: Props) {
+  const [previous, setPrevious] = useState(value);
+  const last = useRef(value);
+
+  useEffect(() => {
+    if (last.current !== value) {
+      setPrevious(last.current);
+      last.current = value;
+    }
+  }, [value]);
+
+  const shown = value * scale;
+  const decimals = step * scale < 1 ? 1 : 0;
+
+  return (
+    <div className="slider-card">
+      <div className="slider-head">
+        <div>
+          <strong>{label}</strong>
+          <span className="default-tag">Default {(defaultValue * scale).toFixed(decimals)}{suffix}</span>
+        </div>
+        <button className="text-button" onClick={() => onChange(defaultValue)}>Reset</button>
+      </div>
+      <div className="slider-value-row">
+        <input
+          className="range"
+          type="range"
+          min={min}
+          max={max}
+          step={step}
+          value={value}
+          onChange={(event) => onChange(Number(event.target.value))}
+        />
+        <div className="number-with-suffix compact-number">
+          <input
+            aria-label={label}
+            type="number"
+            min={min * scale}
+            max={max * scale}
+            step={step * scale}
+            value={Number(shown.toFixed(decimals + 1))}
+            onChange={(event) => onChange(Number(event.target.value) / scale)}
+          />
+          <span>{suffix}</span>
+        </div>
+      </div>
+      <div className="range-labels"><span>{(min * scale).toFixed(decimals)}{suffix}</span><span>{(max * scale).toFixed(decimals)}{suffix}</span></div>
+      {previous !== value && <small className="previous-value">Previous {(previous * scale).toFixed(decimals + 1)}{suffix}</small>}
+    </div>
+  );
+}
