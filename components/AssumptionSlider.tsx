@@ -33,9 +33,9 @@ export function AssumptionSlider({ label, value, defaultValue, min, max, step, s
       <div className="slider-head">
         <div>
           <strong>{label}</strong>
-          <span className="default-tag">Default {(defaultValue * scale).toFixed(decimals)}{suffix}</span>
+          <span className="default-tag">기본값 {(defaultValue * scale).toFixed(decimals)}{suffix}</span>
         </div>
-        <button className="text-button" onClick={() => onChange(defaultValue)}>Reset</button>
+        <button className="text-button" onClick={() => onChange(defaultValue)}>초기화</button>
       </div>
       <div className="slider-value-row">
         <input
@@ -61,7 +61,7 @@ export function AssumptionSlider({ label, value, defaultValue, min, max, step, s
         </div>
       </div>
       <div className="range-labels"><span>{(min * scale).toFixed(decimals)}{suffix}</span><span>{(max * scale).toFixed(decimals)}{suffix}</span></div>
-      {previous !== value && <small className="previous-value">Previous {(previous * scale).toFixed(decimals + 1)}{suffix}</small>}
+      {previous !== value && <small className="previous-value">변경 전 {(previous * scale).toFixed(decimals + 1)}{suffix}</small>}
     </div>
   );
 }

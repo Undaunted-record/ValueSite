@@ -32,7 +32,7 @@ export function buildValuationRanges(
     low: tradingPrices[0],
     base: tradingPrices[1],
     high: tradingPrices[2],
-    metric: `${peerStats.median.toFixed(1)}x median`,
+    metric: `중앙값 ${peerStats.median.toFixed(1)}x`,
   };
   return [dcfRange, ...multipleRanges, tradingRange].filter((item) => methods.includes(item.method) && item.base > 0);
 }

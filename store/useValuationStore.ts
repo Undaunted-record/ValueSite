@@ -51,6 +51,6 @@ export const useValuationStore = create<ValuationState>()(
       loadDemo: () => set({ company: DEMO_COMPANY, assumptions: DEFAULT_ASSUMPTIONS, methods: DEFAULT_METHODS, peers: DEMO_PEERS, mode: "quick" }),
       reset: () => set({ company: EMPTY_COMPANY, assumptions: DEFAULT_ASSUMPTIONS, methods: DEFAULT_METHODS, peers: [], mode: "quick" }),
     }),
-    { name: "valuesite-valuation-v1" },
+    { name: "valuesite-valuation-ko-v2" },
   ),
 );
