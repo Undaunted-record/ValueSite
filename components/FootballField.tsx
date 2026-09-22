@@ -10,9 +10,9 @@ export function FootballField({ ranges, currentPrice }: Props) {
 
   return (
     <div className="football-chart">
-      <div className="football-axis"><span>₩{Math.round(min).toLocaleString()}</span><span>IMPLIED SHARE PRICE</span><span>₩{Math.round(max).toLocaleString()}</span></div>
+      <div className="football-axis"><span>₩{Math.round(min).toLocaleString()}</span><span>주당가치 범위</span><span>₩{Math.round(max).toLocaleString()}</span></div>
       <div className="field-body">
-        {currentPrice > 0 && <div className="current-price-line" style={{ left: position(currentPrice) }}><span>Current<br />₩{currentPrice.toLocaleString()}</span></div>}
+        {currentPrice > 0 && <div className="current-price-line" style={{ left: position(currentPrice) }}><span>현재 주가<br />₩{currentPrice.toLocaleString()}</span></div>}
         {ranges.map((item) => <div className="field-row" key={item.method}>
           <strong>{item.label}<small>{item.metric}</small></strong>
           <div className="field-track">

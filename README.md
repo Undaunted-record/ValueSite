@@ -1,50 +1,50 @@
 # ValueSite
 
-**Free Interactive IB Valuation Dashboard**
+**무료 인터랙티브 IB 밸류에이션 대시보드**
 
-> Build the valuation. Defend the assumptions.
+> 기업가치를 계산하고, 가정을 검증하세요.
 
-ValueSite is a self-service valuation workspace for learning and fast analysis. Enter a small set of financial data, choose one or more valuation methods, and stress-test the key assumptions in real time. The dashboard deliberately presents ranges rather than a single “correct” answer.
+ValueSite는 밸류에이션 학습과 빠른 분석을 위한 무료 셀프서비스 도구입니다. 최소한의 재무정보를 입력하고 하나 이상의 평가 방법을 선택한 뒤, 주요 가정을 실시간으로 조정할 수 있습니다. 하나의 숫자를 정답처럼 제시하지 않고 하단·기준·상단의 가치 범위를 보여줍니다.
 
-## What is included
+## 주요 기능
 
-- Quick and Advanced valuation modes
-- Editable historical and forecast financial table (`A` = Actual, `E` = Estimate)
-- DCF engine with Gordon Growth and Exit Multiple terminal value methods
-- Interactive WACC, terminal growth, exit multiple, and target multiple controls
-- Advanced WACC build-up: risk-free rate, beta, ERP, cost of debt, tax rate, and capital structure
-- EV / EBITDA, P / E, P / B, and EV / Revenue valuation
-- Editable Trading Comps with automatic quartiles, median, mean, and maximum/minimum
-- Rule-based “Why this multiple?” explanation
-- EV-to-Equity bridge and implied share price
-- Live Football Field chart for selected methods
-- Industry-based commonly used method suggestions
-- Sanity checks for invalid or economically weak assumptions
-- Demo Manufacturing Co. dataset
-- LocalStorage persistence
-- Responsive desktop and mobile layouts
+- 간편·고급 밸류에이션 모드
+- 과거 실적과 추정치 입력표 (`A` = 실적, `E` = 추정)
+- 고든 성장모형과 출구배수를 지원하는 DCF 엔진
+- WACC, 영구성장률, 출구배수, 목표배수 실시간 조정
+- 무위험수익률, 베타, ERP, 타인자본비용, 세율, 자본구조를 반영한 WACC 계산
+- EV / EBITDA, P / E, P / B, EV / Revenue 밸류에이션
+- 비교기업 데이터 입력 및 사분위수·중앙값·평균·최솟값·최댓값 자동 계산
+- 선택 배수의 근거를 설명하는 규칙 기반 분석
+- EV에서 주주가치로 이어지는 브리지와 주당가치 계산
+- 선택한 방법을 한눈에 비교하는 가치범위 비교 차트(Football Field)
+- 업종별로 흔히 쓰이는 방법 추천
+- 비정상 입력과 경제적으로 취약한 가정을 점검하는 안전성 검사
+- 가상 제조기업 데모 데이터
+- LocalStorage 자동 저장
+- 데스크톱·모바일 반응형 화면
 
-## MVP flow
+## 핵심 흐름
 
 ```mermaid
 flowchart LR
-    A[Financial Input] --> B[Method Selection]
-    B --> C[Interactive Assumptions]
-    C --> D[Live Valuation]
-    D --> E[EV Bridge]
-    E --> F[Summary & Football Field]
+    A[재무정보 입력] --> B[평가 방법 선택]
+    B --> C[주요 가정 조정]
+    C --> D[실시간 가치 계산]
+    D --> E[EV 브리지]
+    E --> F[요약·가치범위 비교]
 ```
 
-## Tech stack
+## 기술 구성
 
 - Next.js App Router
-- TypeScript (strict mode)
-- Zustand with persistence middleware
-- CSS design system optimized for financial tables and dashboards
-- Vitest for valuation engine tests
-- Vercel-compatible server routes
+- TypeScript 엄격 모드
+- Zustand 및 영속화 미들웨어
+- 재무 테이블과 대시보드에 맞춘 CSS 디자인 시스템
+- Vitest 계산 엔진 테스트
+- Vercel 호환 서버 라우트
 
-The calculation engine is separate from UI code under `lib/valuation/`:
+계산 로직은 UI와 분리해 `lib/valuation/`에서 관리합니다.
 
 ```text
 lib/valuation/
@@ -58,7 +58,7 @@ lib/valuation/
 └── wacc.ts
 ```
 
-## Local setup
+## 로컬 실행
 
 ```bash
 git clone <repository-url>
@@ -67,9 +67,9 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+[http://localhost:3000](http://localhost:3000)에서 확인할 수 있습니다.
 
-Quality checks:
+품질 검사는 다음 명령으로 실행합니다.
 
 ```bash
 npm run lint
@@ -77,9 +77,9 @@ npm test
 npm run build
 ```
 
-## Environment variables
+## 환경변수
 
-Copy the example file:
+예시 파일을 복사합니다.
 
 ```bash
 cp .env.example .env.local
@@ -89,46 +89,44 @@ cp .env.example .env.local
 OPEN_DART_API_KEY=
 ```
 
-The API key is optional. Without it, ValueSite runs normally in manual-input mode. Never commit `.env.local` or an actual API key.
+API 키는 선택 사항입니다. 키가 없으면 수동 입력 모드로 정상 작동합니다. 실제 API 키나 `.env.local` 파일은 커밋하지 마세요.
 
-## OpenDART integration design
+## OpenDART 연동 구조
 
-ValueSite includes a browser-safe `DartDataSource` interface in `lib/dart/client.ts` and a server-only configuration status route. This keeps the future API key out of browser code.
+브라우저에서 안전하게 사용할 수 있는 `DartDataSource` 인터페이스는 `lib/dart/client.ts`에 있으며, 서버 전용 설정 상태 라우트가 별도로 구성되어 있습니다. 따라서 향후 실제 연동 시에도 API 키가 브라우저 코드에 노출되지 않습니다.
 
-Planned production data flow:
+예정된 데이터 흐름은 다음과 같습니다.
 
-1. Search company name or stock code.
-2. Match it to OpenDART `corp_code` on the server.
-3. Request the latest three annual financial statements.
-4. Normalize Revenue, Operating Profit, Net Income, Assets, Liabilities, and Equity.
-5. Populate historical periods while preserving manual forecast inputs.
+1. 기업명 또는 종목코드 검색
+2. 서버에서 OpenDART `corp_code` 매칭
+3. 최근 3개년 재무제표 요청
+4. 매출액, 영업이익, 당기순이익, 자산, 부채, 자본 정규화
+5. 사용자가 입력한 전망치를 유지하면서 과거 실적 자동 입력
 
-The current MVP intentionally leaves external financial data as an opt-in integration. It never presents estimated or demo values as actual company data.
+현재 MVP는 외부 재무정보 연동을 선택 사항으로 남겨두며, 데모나 추정값을 실제 기업 데이터로 표시하지 않습니다.
 
-## Valuation methods
+## 밸류에이션 방법
 
-| Method | Common use | Important limitation |
+| 방법 | 주로 사용하는 경우 | 주요 한계 |
 |---|---|---|
-| DCF | Businesses with reasonably forecastable cash flow | Sensitive to WACC and terminal assumptions |
-| EV / EBITDA | Manufacturing, industrials, telecom, capital-intensive sectors | Can obscure recurring capex and working capital needs |
-| P / E | Profitable listed companies | Not meaningful for loss-making companies |
-| P / B | Banks, insurers, balance-sheet-driven financial companies | Less useful for intangible-heavy companies |
-| EV / Revenue | High-growth businesses before positive earnings | Ignores margin and profitability differences |
-| Trading Comps | Companies with a credible public peer set | Peer selection and market conditions materially affect results |
+| DCF | 현금흐름을 비교적 합리적으로 예측할 수 있는 기업 | WACC와 최종가치 가정에 민감함 |
+| EV / EBITDA | 제조업, 산업재, 통신, 자본집약적 업종 | 반복 CAPEX와 운전자본 소요를 충분히 반영하지 못할 수 있음 |
+| P / E | 안정적인 순이익을 내는 상장기업 | 적자기업에는 의미가 없음 |
+| P / B | 은행, 보험 등 재무상태표 중심의 금융회사 | 무형자산 중심 기업에는 적합성이 낮음 |
+| EV / Revenue | 아직 이익은 없지만 빠르게 성장하는 기업 | 마진과 수익성 차이를 반영하지 못함 |
+| Trading Comps | 신뢰할 수 있는 상장 비교기업군이 있는 기업 | 비교기업 선정과 시장 상황에 크게 좌우됨 |
 
-Industry recommendations are shown as **commonly used methods**, not as absolute prescriptions. Users can select any combination.
+업종별 추천은 절대적인 처방이 아니라 **흔히 사용하는 방법**으로 안내되며, 사용자는 어떤 조합이든 자유롭게 선택할 수 있습니다.
 
-## Default and estimated assumptions
+## 기본 가정과 추정값
 
-Quick Mode applies clearly labelled defaults for tax, D&A, CAPEX, change in NWC, WACC, and terminal growth. Advanced Mode lets the user override each driver. Values calculated from a default are identified as `Default assumption` or `Estimated` in the interface.
-
-Default cash flow structure:
+간편 모드에서는 세율, D&A, CAPEX, NWC 증감, WACC, 영구성장률에 명시적인 기본값을 적용합니다. 고급 모드에서는 각 항목을 직접 수정할 수 있습니다. 시스템이 추정한 값은 화면에 `기본 가정` 또는 `추정값`으로 표시합니다.
 
 ```text
-NOPAT = EBIT × (1 − Tax Rate)
-UFCF = NOPAT + D&A − CAPEX − Change in NWC
+NOPAT = EBIT × (1 − 세율)
+UFCF = NOPAT + D&A − CAPEX − NWC 증감
 ```
 
-## Important notice
+## 주의사항
 
-ValueSite is provided solely for educational and analytical purposes. It is not investment advice, a fairness opinion, or a substitute for professional due diligence. Outputs depend on user inputs and assumptions and may differ materially from actual market value.
+ValueSite는 교육 및 분석 목적으로만 제공됩니다. 투자 권유, 공정성 의견 또는 전문 실사의 대체물이 아닙니다. 결과는 사용자 입력과 가정에 따라 달라지며 실제 시장가치와 큰 차이가 날 수 있습니다.

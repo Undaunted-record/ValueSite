@@ -3,7 +3,7 @@ import type { Assumptions, CompanyData, PeerCompany, ValuationMethod } from "@/t
 export const EMPTY_COMPANY: CompanyData = {
   name: "",
   ticker: "",
-  industry: "Mature Manufacturing",
+  industry: "성숙 제조업",
   cash: 0,
   debt: 0,
   preferredStock: 0,
@@ -23,9 +23,9 @@ export const EMPTY_COMPANY: CompanyData = {
 };
 
 export const DEMO_COMPANY: CompanyData = {
-  name: "Demo Manufacturing Co.",
+  name: "밸류 제조 주식회사",
   ticker: "DEMO",
-  industry: "Mature Manufacturing",
+  industry: "성숙 제조업",
   cash: 420,
   debt: 1280,
   preferredStock: 0,
@@ -66,18 +66,18 @@ export const DEFAULT_ASSUMPTIONS: Assumptions = {
 export const DEFAULT_METHODS: ValuationMethod[] = ["dcf", "evEbitda", "pe", "tradingComps"];
 
 export const DEMO_PEERS: PeerCompany[] = [
-  { id: "1", company: "Alpha Industrial", enterpriseValue: 7200, marketCap: 6100, revenue: 7600, ebitda: 930, ebit: 690, netIncome: 500 },
-  { id: "2", company: "Beta Components", enterpriseValue: 8350, marketCap: 7060, revenue: 8100, ebitda: 1015, ebit: 770, netIncome: 570 },
-  { id: "3", company: "Gamma Systems", enterpriseValue: 6650, marketCap: 5900, revenue: 6920, ebitda: 815, ebit: 625, netIncome: 455 },
-  { id: "4", company: "Delta Manufacturing", enterpriseValue: 9420, marketCap: 8110, revenue: 8750, ebitda: 1120, ebit: 860, netIncome: 625 },
+  { id: "1", company: "알파산업", enterpriseValue: 7200, marketCap: 6100, revenue: 7600, ebitda: 930, ebit: 690, netIncome: 500 },
+  { id: "2", company: "베타부품", enterpriseValue: 8350, marketCap: 7060, revenue: 8100, ebitda: 1015, ebit: 770, netIncome: 570 },
+  { id: "3", company: "감마시스템즈", enterpriseValue: 6650, marketCap: 5900, revenue: 6920, ebitda: 815, ebit: 625, netIncome: 455 },
+  { id: "4", company: "델타제조", enterpriseValue: 9420, marketCap: 8110, revenue: 8750, ebitda: 1120, ebit: 860, netIncome: 625 },
 ];
 
 export const INDUSTRIES = [
-  "Mature Manufacturing",
-  "Banking & Financials",
-  "High-growth / Loss-making",
-  "Technology & Software",
-  "Telecom & Infrastructure",
-  "Consumer & Retail",
-  "M&A Target",
+  "성숙 제조업",
+  "은행·금융",
+  "고성장·적자기업",
+  "기술·소프트웨어",
+  "통신·인프라",
+  "소비재·유통",
+  "M&A 대상기업",
 ];
