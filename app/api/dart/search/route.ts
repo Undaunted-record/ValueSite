@@ -3,6 +3,8 @@ import { publicDartError } from "@/lib/dart/errors";
 import { allowDartRequest } from "@/lib/dart/rate-limit";
 import { searchDartCompanies } from "@/lib/dart/server";
 
+export const maxDuration = 60;
+
 export async function GET(request: NextRequest) {
   if (!allowDartRequest(request)) return NextResponse.json({ error: "검색 요청이 너무 많습니다. 잠시 후 다시 시도해 주세요.", retryable: true }, { status: 429 });
   const query = request.nextUrl.searchParams.get("q")?.trim() ?? "";

@@ -13,7 +13,7 @@ async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const controller = new AbortController();
   const abort = () => controller.abort();
   signal?.addEventListener("abort", abort, { once: true });
-  const timer = window.setTimeout(abort, 25_000);
+  const timer = window.setTimeout(abort, 55_000);
   try {
     const response = await fetch(url, { signal: controller.signal });
     const body = await response.json().catch(() => null) as { error?: string; retryable?: boolean } | T | null;

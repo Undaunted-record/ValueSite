@@ -7,7 +7,7 @@ import { normalizeFinancialStatements, STATEMENT_PREFERENCE } from "./normalize"
 import type { DartAccountRow, DartAnnualStatement, DartCompanyOverview } from "./types";
 
 const DART_BASE_URL = "https://opendart.fss.or.kr/api";
-const REQUEST_TIMEOUT_MS = 12_000;
+const REQUEST_TIMEOUT_MS = 50_000;
 const CORP_CODE_TTL_MS = 24 * 60 * 60 * 1000;
 let corpCodeCache: { expiresAt: number; xml: string } | null = null;
 let corpCodePromise: Promise<string> | null = null;
@@ -43,11 +43,12 @@ function requestDart(url: URL, maxBytes = 60 * 1024 * 1024): Promise<Buffer> {
         }
         chunks.push(chunk);
       });
-      response.on("end", () => resolve(Buffer.concat(chunks)));
-      response.on("error", reject);
+      response.on("end", () => { clearTimeout(absoluteTimer); resolve(Buffer.concat(chunks)); });
+      response.on("error", (error) => { clearTimeout(absoluteTimer); reject(error); });
     });
+    const absoluteTimer = setTimeout(() => request.destroy(new DOMException("Request timed out", "AbortError")), REQUEST_TIMEOUT_MS);
     request.on("timeout", () => request.destroy(new DOMException("Request timed out", "AbortError")));
-    request.on("error", reject);
+    request.on("error", (error) => { clearTimeout(absoluteTimer); reject(error); });
   });
 }
 
