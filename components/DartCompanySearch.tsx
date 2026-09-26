@@ -10,6 +10,7 @@ type PendingImport = { overview: DartCompanyOverview; financials: NormalizedDart
 export function DartCompanySearch() {
   const listId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
+  const skipNextSearchRef = useRef(false);
   const { company, dataSource, dartImport, applyDartImport } = useValuationStore();
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [query, setQuery] = useState("");
@@ -26,6 +27,12 @@ export function DartCompanySearch() {
   }, []);
 
   useEffect(() => {
+    if (skipNextSearchRef.current) {
+      skipNextSearchRef.current = false;
+      setResults([]);
+      setActiveIndex(-1);
+      return;
+    }
     const compact = query.replace(/\s+/g, "");
     const minimum = /[가-힣]/.test(compact) ? 2 : 3;
     if (!configured || compact.length < minimum) {
@@ -75,6 +82,7 @@ export function DartCompanySearch() {
   function applyImport(loaded: PendingImport, includeIdentity: boolean) {
     applyDartImport(loaded.overview, loaded.financials, includeIdentity);
     setPending(null);
+    skipNextSearchRef.current = true;
     setQuery(loaded.overview.corpName);
     setStatus("idle");
     setMessage("OpenDART 공시 실적을 반영했습니다. 전망치와 밸류에이션 가정은 유지했습니다.");
