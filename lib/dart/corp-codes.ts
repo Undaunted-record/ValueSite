@@ -27,10 +27,14 @@ export function parseCorpCodeXml(xml: string): DartCompanyRecord[] {
 }
 
 export function parseCorpCodeZip(buffer: ArrayBuffer): DartCompanyRecord[] {
+  return parseCorpCodeXml(extractCorpCodeXml(buffer));
+}
+
+export function extractCorpCodeXml(buffer: ArrayBuffer): string {
   const files = unzipSync(new Uint8Array(buffer));
   const xmlFile = Object.entries(files).find(([name]) => name.toLowerCase().endsWith(".xml"));
   if (!xmlFile) throw new Error("OpenDART 고유번호 XML 파일을 찾지 못했습니다.");
-  return parseCorpCodeXml(strFromU8(xmlFile[1]));
+  return strFromU8(xmlFile[1]);
 }
 
 function normalizeSearch(value: string) {
@@ -47,6 +51,34 @@ export function searchCorpCodes(companies: DartCompanyRecord[], query: string, l
       return { company, score };
     })
     .filter(({ score }) => score < 99)
+    .sort((a, b) => a.score - b.score || a.company.corpName.localeCompare(b.company.corpName, "ko"))
+    .slice(0, Math.max(1, Math.min(limit, 10)))
+    .map(({ company }) => company);
+}
+
+/** Vercel 함수에서 전체 목록을 객체로 만들지 않고 일치 후보만 할당한다. */
+export function searchCorpCodeXml(xml: string, query: string, limit = 10) {
+  const normalized = normalizeSearch(query);
+  const candidates: Array<{ company: DartCompanyRecord; score: number }> = [];
+  for (const match of xml.matchAll(/<list>([\s\S]*?)<\/list>/gi)) {
+    const block = match[1];
+    const corpName = readTag(block, "corp_name");
+    const stockCode = readTag(block, "stock_code");
+    const name = normalizeSearch(corpName);
+    const score = stockCode === normalized ? 0 : name === normalized ? 1 : name.startsWith(normalized) ? 2 : name.includes(normalized) ? 3 : 99;
+    if (score === 99 || (!stockCode && name !== normalized)) continue;
+    candidates.push({
+      score,
+      company: {
+        corpCode: readTag(block, "corp_code"),
+        corpName,
+        corpEngName: readTag(block, "corp_eng_name"),
+        stockCode,
+        modifyDate: readTag(block, "modify_date"),
+      },
+    });
+  }
+  return candidates
     .sort((a, b) => a.score - b.score || a.company.corpName.localeCompare(b.company.corpName, "ko"))
     .slice(0, Math.max(1, Math.min(limit, 10)))
     .map(({ company }) => company);

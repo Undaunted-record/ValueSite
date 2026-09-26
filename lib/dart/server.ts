@@ -1,15 +1,15 @@
 import "server-only";
 
-import { parseCorpCodeZip, searchCorpCodes } from "./corp-codes";
+import { extractCorpCodeXml, searchCorpCodeXml } from "./corp-codes";
 import { DartApiError } from "./errors";
 import { normalizeFinancialStatements, STATEMENT_PREFERENCE } from "./normalize";
-import type { DartAccountRow, DartAnnualStatement, DartCompanyOverview, DartCompanyRecord } from "./types";
+import type { DartAccountRow, DartAnnualStatement, DartCompanyOverview } from "./types";
 
 const DART_BASE_URL = "https://opendart.fss.or.kr/api";
 const REQUEST_TIMEOUT_MS = 12_000;
 const CORP_CODE_TTL_MS = 24 * 60 * 60 * 1000;
-let corpCodeCache: { expiresAt: number; companies: DartCompanyRecord[] } | null = null;
-let corpCodePromise: Promise<DartCompanyRecord[]> | null = null;
+let corpCodeCache: { expiresAt: number; xml: string } | null = null;
+let corpCodePromise: Promise<string> | null = null;
 
 function apiKey() {
   const key = process.env.OPEN_DART_API_KEY?.trim();
@@ -42,20 +42,28 @@ async function fetchDartJson<T>(endpoint: string, params: Record<string, string>
   return body;
 }
 
-async function loadCorpCodes() {
-  if (corpCodeCache && corpCodeCache.expiresAt > Date.now()) return corpCodeCache.companies;
+async function loadCorpCodeXml() {
+  if (corpCodeCache && corpCodeCache.expiresAt > Date.now()) return corpCodeCache.xml;
   if (corpCodePromise) return corpCodePromise;
   corpCodePromise = (async () => {
-    const response = await fetchWithTimeout(dartUrl("corpCode.xml"), 86_400);
-    if (!response.ok) throw new Error(`OpenDART HTTP ${response.status}`);
-    const contentType = response.headers.get("content-type") ?? "";
-    if (contentType.includes("json")) {
-      const body = await response.json() as { status?: string };
-      throw new DartApiError(body.status ?? "900");
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      const response = await fetch(dartUrl("corpCode.xml"), { signal: controller.signal, cache: "no-store" });
+      if (!response.ok) throw new Error(`OpenDART HTTP ${response.status}`);
+      const archive = await response.arrayBuffer();
+      const bytes = new Uint8Array(archive);
+      if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
+        const errorXml = new TextDecoder().decode(bytes);
+        const status = errorXml.match(/<status>(\d+)<\/status>/)?.[1] ?? "900";
+        throw new DartApiError(status);
+      }
+      const xml = extractCorpCodeXml(archive);
+      corpCodeCache = { xml, expiresAt: Date.now() + CORP_CODE_TTL_MS };
+      return xml;
+    } finally {
+      clearTimeout(timer);
     }
-    const companies = parseCorpCodeZip(await response.arrayBuffer());
-    corpCodeCache = { companies, expiresAt: Date.now() + CORP_CODE_TTL_MS };
-    return companies;
   })();
   try {
     return await corpCodePromise;
@@ -65,7 +73,7 @@ async function loadCorpCodes() {
 }
 
 export async function searchDartCompanies(query: string) {
-  return searchCorpCodes(await loadCorpCodes(), query, 10);
+  return searchCorpCodeXml(await loadCorpCodeXml(), query, 10);
 }
 
 export async function getDartCompany(corpCode: string): Promise<DartCompanyOverview> {

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
 import { DEMO_COMPANY } from "@/data/demo";
-import { parseCorpCodeXml, parseCorpCodeZip, searchCorpCodes } from "@/lib/dart/corp-codes";
+import { parseCorpCodeXml, parseCorpCodeZip, searchCorpCodes, searchCorpCodeXml } from "@/lib/dart/corp-codes";
 import { getDartErrorMessage } from "@/lib/dart/errors";
 import { mergeDartCompany } from "@/lib/dart/merge";
 import { normalizeFinancialStatements, parseDartAmount, STATEMENT_PREFERENCE } from "@/lib/dart/normalize";
@@ -45,6 +45,8 @@ describe("OpenDART normalization", () => {
     expect(searchCorpCodes(companies, "005930")[0].corpName).toBe("삼성전자");
     expect(searchCorpCodes(companies, "삼성").map((item) => item.corpName)).toEqual(["삼성전자"]);
     expect(searchCorpCodes(companies, "삼성전자서비스")[0].corpCode).toBe("00999999");
+    expect(searchCorpCodeXml(xml, "005930")[0].corpName).toBe("삼성전자");
+    expect(searchCorpCodeXml(xml, "삼성").map((item) => item.corpName)).toEqual(["삼성전자"]);
   });
 
   it("prefers CFS before OFS", () => {
