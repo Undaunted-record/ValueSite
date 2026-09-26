@@ -1,16 +1,18 @@
 import "server-only";
 
 import { get as httpsGet } from "node:https";
-import { extractCorpCodeXml, searchCorpCodeXml } from "./corp-codes";
+import { extractCorpCodeXml, parseListedCorpCsv, searchCorpCodes, searchCorpCodeXml } from "./corp-codes";
 import { DartApiError } from "./errors";
 import { normalizeFinancialStatements, STATEMENT_PREFERENCE } from "./normalize";
-import type { DartAccountRow, DartAnnualStatement, DartCompanyOverview } from "./types";
+import type { DartAccountRow, DartAnnualStatement, DartCompanyOverview, DartCompanyRecord } from "./types";
 
 const DART_BASE_URL = "https://opendart.fss.or.kr/api";
+const LISTED_CORP_INDEX_URL = "https://raw.githubusercontent.com/airoasting/dart/main/assets/corp_codes_listed.csv";
 const REQUEST_TIMEOUT_MS = 50_000;
 const CORP_CODE_TTL_MS = 24 * 60 * 60 * 1000;
-let corpCodeCache: { expiresAt: number; xml: string } | null = null;
-let corpCodePromise: Promise<string> | null = null;
+type CorpSearchIndex = { records: DartCompanyRecord[]; xml?: never } | { records?: never; xml: string };
+let corpCodeCache: { expiresAt: number; index: CorpSearchIndex } | null = null;
+let corpCodePromise: Promise<CorpSearchIndex> | null = null;
 
 function apiKey() {
   const key = process.env.OPEN_DART_API_KEY?.trim();
@@ -25,9 +27,9 @@ function dartUrl(endpoint: string, params: Record<string, string> = {}) {
   return url;
 }
 
-function requestDart(url: URL, maxBytes = 60 * 1024 * 1024): Promise<Buffer> {
+function requestHttps(url: URL, maxBytes = 60 * 1024 * 1024, timeoutMs = REQUEST_TIMEOUT_MS): Promise<Buffer> {
   return new Promise((resolve, reject) => {
-    const request = httpsGet(url, { family: 4, timeout: REQUEST_TIMEOUT_MS, headers: { "User-Agent": "ValueSite/1.0" } }, (response) => {
+    const request = httpsGet(url, { family: 4, timeout: timeoutMs, headers: { "User-Agent": "ValueSite/1.0" } }, (response) => {
       if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
         response.resume();
         reject(new Error(`OpenDART HTTP ${response.statusCode ?? 0}`));
@@ -46,7 +48,7 @@ function requestDart(url: URL, maxBytes = 60 * 1024 * 1024): Promise<Buffer> {
       response.on("end", () => { clearTimeout(absoluteTimer); resolve(Buffer.concat(chunks)); });
       response.on("error", (error) => { clearTimeout(absoluteTimer); reject(error); });
     });
-    const absoluteTimer = setTimeout(() => request.destroy(new DOMException("Request timed out", "AbortError")), REQUEST_TIMEOUT_MS);
+    const absoluteTimer = setTimeout(() => request.destroy(new DOMException("Request timed out", "AbortError")), timeoutMs);
     request.on("timeout", () => request.destroy(new DOMException("Request timed out", "AbortError")));
     request.on("error", (error) => { clearTimeout(absoluteTimer); reject(error); });
   });
@@ -54,16 +56,26 @@ function requestDart(url: URL, maxBytes = 60 * 1024 * 1024): Promise<Buffer> {
 
 async function fetchDartJson<T>(endpoint: string, params: Record<string, string>, revalidate = 21_600): Promise<T> {
   void revalidate;
-  const body = JSON.parse((await requestDart(dartUrl(endpoint, params), 20 * 1024 * 1024)).toString("utf8")) as { status?: string; message?: string } & T;
+  const body = JSON.parse((await requestHttps(dartUrl(endpoint, params), 20 * 1024 * 1024)).toString("utf8")) as { status?: string; message?: string } & T;
   if (body.status && body.status !== "000") throw new DartApiError(body.status);
   return body;
 }
 
-async function loadCorpCodeXml() {
-  if (corpCodeCache && corpCodeCache.expiresAt > Date.now()) return corpCodeCache.xml;
+async function loadCorpSearchIndex() {
+  if (corpCodeCache && corpCodeCache.expiresAt > Date.now()) return corpCodeCache.index;
   if (corpCodePromise) return corpCodePromise;
   corpCodePromise = (async () => {
-    const archiveBuffer = await requestDart(dartUrl("corpCode.xml"));
+    try {
+      const csv = (await requestHttps(new URL(LISTED_CORP_INDEX_URL), 5 * 1024 * 1024, 8_000)).toString("utf8");
+      const records = parseListedCorpCsv(csv);
+      if (records.length < 2_000) throw new Error("상장기업 검색 인덱스가 불완전합니다.");
+      const index = { records } satisfies CorpSearchIndex;
+      corpCodeCache = { index, expiresAt: Date.now() + CORP_CODE_TTL_MS };
+      return index;
+    } catch {
+      // 외부 검색 인덱스가 없을 때만 공식 전체 고유번호 파일로 대체한다.
+    }
+    const archiveBuffer = await requestHttps(dartUrl("corpCode.xml"));
     if (archiveBuffer[0] !== 0x50 || archiveBuffer[1] !== 0x4b) {
       const errorXml = archiveBuffer.toString("utf8");
       const status = errorXml.match(/<status>(\d+)<\/status>/)?.[1] ?? "900";
@@ -71,8 +83,9 @@ async function loadCorpCodeXml() {
     }
     const archive = archiveBuffer.buffer.slice(archiveBuffer.byteOffset, archiveBuffer.byteOffset + archiveBuffer.byteLength) as ArrayBuffer;
     const xml = extractCorpCodeXml(archive);
-    corpCodeCache = { xml, expiresAt: Date.now() + CORP_CODE_TTL_MS };
-    return xml;
+    const index = { xml } satisfies CorpSearchIndex;
+    corpCodeCache = { index, expiresAt: Date.now() + CORP_CODE_TTL_MS };
+    return index;
   })();
   try {
     return await corpCodePromise;
@@ -82,7 +95,8 @@ async function loadCorpCodeXml() {
 }
 
 export async function searchDartCompanies(query: string) {
-  return searchCorpCodeXml(await loadCorpCodeXml(), query, 10);
+  const index = await loadCorpSearchIndex();
+  return index.records ? searchCorpCodes(index.records, query, 10) : searchCorpCodeXml(index.xml, query, 10);
 }
 
 export async function getDartCompany(corpCode: string): Promise<DartCompanyOverview> {

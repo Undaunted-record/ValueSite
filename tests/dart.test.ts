@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { strToU8, zipSync } from "fflate";
 import { DEMO_COMPANY } from "@/data/demo";
-import { parseCorpCodeXml, parseCorpCodeZip, searchCorpCodes, searchCorpCodeXml } from "@/lib/dart/corp-codes";
+import { parseCorpCodeXml, parseCorpCodeZip, parseListedCorpCsv, searchCorpCodes, searchCorpCodeXml } from "@/lib/dart/corp-codes";
 import { getDartErrorMessage } from "@/lib/dart/errors";
 import { mergeDartCompany } from "@/lib/dart/merge";
 import { normalizeFinancialStatements, parseDartAmount, STATEMENT_PREFERENCE } from "@/lib/dart/normalize";
@@ -38,6 +38,11 @@ describe("OpenDART normalization", () => {
     expect(parseCorpCodeXml(xml)).toHaveLength(3);
     const zipped = zipSync({ "CORPCODE.xml": strToU8(xml) });
     expect(parseCorpCodeZip(zipped.buffer as ArrayBuffer)[0].stockCode).toBe("005930");
+  });
+
+  it("parses a quoted listed-company CSV index", () => {
+    const csv = `corp_code,corp_name,corp_eng_name,stock_code,modify_date\n00126380,삼성전자,"SAMSUNG ELECTRONICS CO., LTD.",005930,20250101`;
+    expect(parseListedCorpCsv(csv)[0]).toMatchObject({ corpCode: "00126380", corpName: "삼성전자", stockCode: "005930", corpEngName: "SAMSUNG ELECTRONICS CO., LTD." });
   });
 
   it("ranks stock-code exact matches and excludes non-listed partial matches", () => {
