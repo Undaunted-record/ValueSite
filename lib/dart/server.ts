@@ -1,5 +1,6 @@
 import "server-only";
 
+import { get as httpsGet } from "node:https";
 import { extractCorpCodeXml, searchCorpCodeXml } from "./corp-codes";
 import { DartApiError } from "./errors";
 import { normalizeFinancialStatements, STATEMENT_PREFERENCE } from "./normalize";
@@ -17,16 +18,6 @@ function apiKey() {
   return key;
 }
 
-async function fetchWithTimeout(url: URL, revalidate: number) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  try {
-    return await fetch(url, { signal: controller.signal, next: { revalidate } });
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
 function dartUrl(endpoint: string, params: Record<string, string> = {}) {
   const url = new URL(`${DART_BASE_URL}/${endpoint}`);
   url.searchParams.set("crtfc_key", apiKey());
@@ -34,10 +25,35 @@ function dartUrl(endpoint: string, params: Record<string, string> = {}) {
   return url;
 }
 
+function requestDart(url: URL, maxBytes = 60 * 1024 * 1024): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const request = httpsGet(url, { family: 4, timeout: REQUEST_TIMEOUT_MS, headers: { "User-Agent": "ValueSite/1.0" } }, (response) => {
+      if (!response.statusCode || response.statusCode < 200 || response.statusCode >= 300) {
+        response.resume();
+        reject(new Error(`OpenDART HTTP ${response.statusCode ?? 0}`));
+        return;
+      }
+      const chunks: Buffer[] = [];
+      let size = 0;
+      response.on("data", (chunk: Buffer) => {
+        size += chunk.length;
+        if (size > maxBytes) {
+          request.destroy(new Error("OpenDART 응답 크기가 제한을 초과했습니다."));
+          return;
+        }
+        chunks.push(chunk);
+      });
+      response.on("end", () => resolve(Buffer.concat(chunks)));
+      response.on("error", reject);
+    });
+    request.on("timeout", () => request.destroy(new DOMException("Request timed out", "AbortError")));
+    request.on("error", reject);
+  });
+}
+
 async function fetchDartJson<T>(endpoint: string, params: Record<string, string>, revalidate = 21_600): Promise<T> {
-  const response = await fetchWithTimeout(dartUrl(endpoint, params), revalidate);
-  if (!response.ok) throw new Error(`OpenDART HTTP ${response.status}`);
-  const body = await response.json() as { status?: string; message?: string } & T;
+  void revalidate;
+  const body = JSON.parse((await requestDart(dartUrl(endpoint, params), 20 * 1024 * 1024)).toString("utf8")) as { status?: string; message?: string } & T;
   if (body.status && body.status !== "000") throw new DartApiError(body.status);
   return body;
 }
@@ -46,24 +62,16 @@ async function loadCorpCodeXml() {
   if (corpCodeCache && corpCodeCache.expiresAt > Date.now()) return corpCodeCache.xml;
   if (corpCodePromise) return corpCodePromise;
   corpCodePromise = (async () => {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-    try {
-      const response = await fetch(dartUrl("corpCode.xml"), { signal: controller.signal, cache: "no-store" });
-      if (!response.ok) throw new Error(`OpenDART HTTP ${response.status}`);
-      const archive = await response.arrayBuffer();
-      const bytes = new Uint8Array(archive);
-      if (bytes[0] !== 0x50 || bytes[1] !== 0x4b) {
-        const errorXml = new TextDecoder().decode(bytes);
-        const status = errorXml.match(/<status>(\d+)<\/status>/)?.[1] ?? "900";
-        throw new DartApiError(status);
-      }
-      const xml = extractCorpCodeXml(archive);
-      corpCodeCache = { xml, expiresAt: Date.now() + CORP_CODE_TTL_MS };
-      return xml;
-    } finally {
-      clearTimeout(timer);
+    const archiveBuffer = await requestDart(dartUrl("corpCode.xml"));
+    if (archiveBuffer[0] !== 0x50 || archiveBuffer[1] !== 0x4b) {
+      const errorXml = archiveBuffer.toString("utf8");
+      const status = errorXml.match(/<status>(\d+)<\/status>/)?.[1] ?? "900";
+      throw new DartApiError(status);
     }
+    const archive = archiveBuffer.buffer.slice(archiveBuffer.byteOffset, archiveBuffer.byteOffset + archiveBuffer.byteLength) as ArrayBuffer;
+    const xml = extractCorpCodeXml(archive);
+    corpCodeCache = { xml, expiresAt: Date.now() + CORP_CODE_TTL_MS };
+    return xml;
   })();
   try {
     return await corpCodePromise;
