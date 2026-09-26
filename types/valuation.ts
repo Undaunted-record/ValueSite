@@ -1,4 +1,5 @@
 export type Mode = "quick" | "advanced";
+export type DataSource = "empty" | "demo" | "user" | "dart";
 export type TerminalMethod = "gordon" | "exitMultiple";
 export type ValuationMethod =
   | "dcf"
@@ -19,6 +20,7 @@ export interface FinancialPeriod {
 export interface CompanyData {
   name: string;
   ticker: string;
+  corpCode?: string;
   industry: string;
   cash: number;
   debt: number;
@@ -88,6 +90,31 @@ export interface DcfResult {
   terminalValue: number;
   terminalValuePercent: number;
   projections: DcfProjection[];
+}
+
+export type DartStatementType = "CFS" | "OFS";
+
+export interface DartFieldSource {
+  field: string;
+  year: string;
+  reportName: string;
+  statementType: DartStatementType;
+  accountId: string;
+  accountName: string;
+  rawAmount: number;
+}
+
+export interface DartImportMeta {
+  corpCode: string;
+  corpName: string;
+  stockCode: string;
+  statementType: DartStatementType;
+  latestYear: string;
+  fetchedAt: string;
+  sources: Record<string, DartFieldSource>;
+  missingFields: string[];
+  warnings: string[];
+  editedFields: string[];
 }
 
 export interface BridgeResult {

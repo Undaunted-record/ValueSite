@@ -28,7 +28,7 @@ export function buildValuationRanges(
   );
   const tradingRange: ValuationRange = {
     method: "tradingComps",
-    label: "Trading Comps",
+    label: "유사기업 비교",
     low: tradingPrices[0],
     base: tradingPrices[1],
     high: tradingPrices[2],

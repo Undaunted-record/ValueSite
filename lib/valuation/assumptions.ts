@@ -6,7 +6,7 @@ export const METHOD_META: Record<ValuationMethod, { label: string; short: string
   pe: { label: "P / E", short: "순이익 대비 주주가치 수준을 비교합니다.", suitable: "안정적인 흑자를 내는 상장기업", caution: "적자기업이나 레버리지가 높은 기업에는 적합하지 않을 수 있습니다." },
   pb: { label: "P / B", short: "회계상 자기자본 대비 시장가치를 비교합니다.", suitable: "은행, 보험 등 자기자본이 수익창출의 기반인 금융회사", caution: "무형자산이 핵심인 기업에는 유용성이 낮을 수 있습니다." },
   evRevenue: { label: "EV / Revenue", short: "매출액 대비 기업가치 수준을 비교합니다.", suitable: "아직 EBITDA가 적자이지만 빠르게 성장하는 기업", caution: "수익성과 마진 구조의 차이를 반영하지 못합니다." },
-  tradingComps: { label: "Trading Comps", short: "유사 상장사의 시장 멀티플을 적용합니다.", suitable: "사업구조가 유사한 비교기업을 충분히 확보할 수 있는 기업", caution: "Peer 선정과 시장 사이클에 따라 결과가 크게 달라질 수 있습니다." },
+  tradingComps: { label: "유사기업 비교", short: "유사 상장사의 시장 멀티플을 적용합니다.", suitable: "사업구조가 유사한 비교기업을 충분히 확보할 수 있는 기업", caution: "비교기업 선정과 시장 사이클에 따라 결과가 크게 달라질 수 있습니다." },
 };
 
 export const INDUSTRY_RECOMMENDATIONS: Record<string, ValuationMethod[]> = {
