@@ -1,20 +1,28 @@
-import type { FinancialPeriod } from "@/types/valuation";
+import type { FinancialPeriod, ValuationMethod } from "@/types/valuation";
 
 export interface ForecastAssumptions {
-  revenueGrowth: number;
-  ebitMargin: number;
-  netMargin: number;
+  revenueGrowth: number | number[];
+  ebitMargin: number | number[];
+  netMargin: number | number[];
+}
+
+const yearValue = (value: number | number[], index: number) => Array.isArray(value) ? (value[index] ?? value.at(-1) ?? 0) : value;
+
+export function getForecastRequirements(methods: ValuationMethod[]) {
+  const ebit = methods.some((method) => ["dcf", "evEbitda", "tradingComps"].includes(method));
+  const netIncome = methods.includes("pe");
+  return { revenueGrowth: ebit || netIncome || methods.includes("evRevenue"), ebitMargin: ebit, netMargin: netIncome };
 }
 
 export function buildSimpleForecast(actuals: FinancialPeriod[], estimateYears: string[], assumptions: ForecastAssumptions) {
   let revenue = actuals.at(-1)?.revenue ?? 0;
-  return estimateYears.map((year) => {
-    revenue *= 1 + assumptions.revenueGrowth;
+  return estimateYears.map((year, index) => {
+    revenue *= 1 + yearValue(assumptions.revenueGrowth, index);
     return {
       year,
       revenue,
-      ebit: revenue * assumptions.ebitMargin,
-      netIncome: revenue * assumptions.netMargin,
+      ebit: revenue * yearValue(assumptions.ebitMargin, index),
+      netIncome: revenue * yearValue(assumptions.netMargin, index),
     };
   });
 }

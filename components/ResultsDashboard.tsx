@@ -3,12 +3,13 @@
 import { METHOD_META } from "@/lib/valuation/assumptions";
 import { calculateDcf } from "@/lib/valuation/dcf";
 import { calculateEvBridge } from "@/lib/valuation/evBridge";
-import { buildValuationRanges } from "@/lib/valuation/footballField";
 import { assessMethodReadiness } from "@/lib/valuation/readiness";
 import { runSanityChecks } from "@/lib/valuation/sanityCheck";
 import { summarizeRanges } from "@/lib/valuation/summary";
 import { useValuationStore } from "@/store/useValuationStore";
 import { FootballField } from "./FootballField";
+import { buildValuationValueRanges, toPerShareRange } from "@/lib/valuation/valueRanges";
+import { median } from "@/lib/valuation/summary";
 
 const money = (value: number) => `₩${Math.round(value).toLocaleString()}`;
 const bn = (value: number) => `${value < 0 ? "-" : ""}₩${Math.round(Math.abs(value)).toLocaleString()}십억원`;
@@ -21,33 +22,40 @@ function useResults() {
   const readyMethods = new Set(selected.filter((item) => item.ready).map((item) => item.method));
   const dcf = calculateDcf(company, assumptions, terminalMethod);
   const bridge = calculateEvBridge(dcf.enterpriseValue, company);
-  const ranges = company.sharesOutstanding > 0 ? buildValuationRanges(company, assumptions, methods, peers, terminalMethod).filter((range) => readyMethods.has(range.method)) : [];
-  return { ...state, selected, dcf, bridge, summary: summarizeRanges(ranges) };
+  const valueRanges = buildValuationValueRanges(company, assumptions, methods, peers, terminalMethod).filter((range) => readyMethods.has(range.method));
+  const ranges = valueRanges.map((range) => toPerShareRange(range, company.sharesOutstanding)).filter((range): range is NonNullable<typeof range> => Boolean(range));
+  const valueSummary = {
+    low: valueRanges.length ? Math.min(...valueRanges.map((range) => range.equityLow)) : 0,
+    high: valueRanges.length ? Math.max(...valueRanges.map((range) => range.equityHigh)) : 0,
+    median: median(valueRanges.map((range) => range.equityBase)),
+  };
+  return { ...state, selected, dcf, bridge, valueRanges, valueSummary, summary: summarizeRanges(ranges) };
 }
 
 export function ResultsDashboard() {
-  const { company, assumptions, methods, peers, terminalMethod, dataSource, selected, dcf, bridge, summary } = useResults();
+  const { company, assumptions, methods, peers, terminalMethod, dataSource, selected, dcf, bridge, valueRanges, valueSummary, summary } = useResults();
   const actuals = company.financials.filter((period) => period.type === "actual");
   const estimates = company.financials.filter((period) => period.type === "estimate");
   const checks = [
     ["기업 정보", Boolean(company.name.trim())], ["최근 실적", actuals.filter((period) => period.revenue > 0).length >= 3],
     ["3개년 추정 매출", estimates.length >= 3 && estimates.every((period) => period.revenue > 0)], ["3개년 추정 EBIT", estimates.length >= 3 && estimates.every((period) => period.ebit !== 0)],
-    ["추정 순이익", estimates.some((period) => period.netIncome !== 0)], ["희석주식수", company.sharesOutstanding > 0],
+    ["추정 순이익", !methods.includes("pe") || estimates.some((period) => period.netIncome !== 0)],
     ["평가 방법", methods.length > 0], ["계산 가능 방법", selected.some((item) => item.ready)],
-    ["유사기업", !methods.includes("tradingComps") || peers.length > 0], ["현재 주가", company.currentSharePrice > 0],
+    ["유사기업", !methods.includes("tradingComps") || peers.length > 0],
   ] as const;
   const completed = checks.filter(([, done]) => done).length;
   const upside = company.currentSharePrice > 0 && summary.median > 0 ? summary.median / company.currentSharePrice - 1 : null;
   const issues = company.name.trim() || actuals.some((period) => period.revenue > 0) ? runSanityChecks(company, assumptions, methods, terminalMethod) : [];
-  const rangeByMethod = new Map(summary.valid.map((range) => [range.method, range]));
+  const rangeByMethod = new Map(valueRanges.map((range) => [range.method, range]));
   return <>
-    <section className="analysis-check" aria-label="분석 점검"><div><strong>분석 준비도 {completed}/10</strong><span>{selected.filter((item) => item.ready).length}/{selected.length}개 선택 방법 계산 가능</span></div><div className="check-list">{checks.map(([label, done]) => <span className={done ? "done" : "pending"} key={label}>{done ? "완료" : "필요"} · {label}</span>)}</div></section>
+    <section className="analysis-check" aria-label="분석 점검"><div><strong>분석 준비도 {completed}/{checks.length}</strong><span>{selected.filter((item) => item.ready).length}/{selected.length}개 선택 방법 계산 가능</span></div><div className="check-list">{checks.map(([label, done]) => <span className={done ? "done" : "pending"} key={label}>{done ? "완료" : "필요"} · {label}</span>)}<span className="optional">선택 · 희석주식수</span><span className="optional">선택 · 현재 주가</span></div></section>
     {issues.length > 0 && <div className="issues" role="status">{issues.map((issue) => <div className={issue.severity} key={`${issue.field}-${issue.message}`}><strong>{issue.severity === "error" ? "오류" : "확인"}</strong><span>{issue.message}</span></div>)}</div>}
     <section id="summary" className="panel section-panel results-panel">
       <div className="section-heading"><div><p className="section-kicker">04 · 결과 요약</p><h2>{company.name || "밸류에이션 결과"}</h2><p>{actuals.at(-1)?.year ?? "기준연도 미입력"} · 계산 가능한 방법만 결과에 포함합니다.</p></div>{dataSource === "demo" && <span className="source-badge demo">샘플 데이터</span>}</div>
       {dcf.enterpriseValue > 0 && <div className="value-strip"><span><small>DCF 기업가치</small><strong>{bn(bridge.enterpriseValue)}</strong></span><span><small>DCF 주주가치</small><strong>{bn(bridge.equityValue)}</strong></span><span><small>DCF 주당가치</small><strong>{company.sharesOutstanding > 0 ? money(bridge.impliedSharePrice) : "주식수 입력 필요"}</strong></span></div>}
-      {summary.valid.length > 0 ? <div className="hero-result"><div><small>선택 방법 전체 가치 범위</small><strong>{money(summary.low)} <span>–</span> {money(summary.high)}</strong><p><span title="계산 가능한 선택 방법의 기준 주당가치를 크기순으로 정렬한 중앙값입니다.">선택 방법 중앙값 ⓘ</span> {money(summary.median)} {upside !== null && <em className={upside >= 0 ? "positive" : "negative"}>{upside >= 0 ? "+" : ""}{(upside * 100).toFixed(1)}% 현재 주가 대비</em>}</p></div><div className="result-metrics"><span><small>계산 가능</small><strong>{selected.filter((item) => item.ready).length}</strong></span><span><small>선택 방법</small><strong>{selected.length}</strong></span><span><small>현재 주가</small><strong>{company.currentSharePrice > 0 ? money(company.currentSharePrice) : "미입력"}</strong></span></div></div> : <div className="result-guidance"><strong>{selected.some((item) => item.ready) ? "기업가치는 계산됐지만 주당가치 산출에 희석주식수가 필요합니다." : "아래 준비 항목을 완료하면 방법별 결과가 표시됩니다."}</strong><p>현재 주가는 상승·하락률 계산에만 필요하며 내재가치 계산을 막지 않습니다.</p><a className="secondary-button" href="#assumptions">전망 및 가정 입력</a></div>}
-      <div className="method-status-grid">{selected.map((item) => { const range = rangeByMethod.get(item.method); return <article className={item.ready ? "ready" : "not-ready"} key={item.method}><div><strong>{METHOD_META[item.method].label}</strong><span>{item.ready ? "계산 가능" : "계산 준비 필요"}</span></div>{range ? <><b>{money(range.base)}</b><small>저점 {money(range.low)} · 고점 {money(range.high)}{range.metric ? ` · ${range.metric}` : ""}</small></> : item.ready ? <p>희석주식수를 입력하면 주당가치가 표시됩니다.</p> : <p>{item.missing.join(" · ")} 필요</p>}</article>; })}</div>
+      {valueRanges.length > 0 ? <div className="hero-result"><div><small>선택 방법 주주가치 범위</small><strong>{bn(valueSummary.low)} <span>–</span> {bn(valueSummary.high)}</strong><p><span title="계산 가능한 선택 방법의 기준 주주가치를 크기순으로 정렬한 중앙값입니다.">주주가치 중앙값 ⓘ</span> {bn(valueSummary.median)}</p>{summary.valid.length > 0 ? <p><span>주당가치 범위</span> {money(summary.low)} – {money(summary.high)} · 중앙값 {money(summary.median)} {upside !== null && <em className={upside >= 0 ? "positive" : "negative"}>{upside >= 0 ? "+" : ""}{(upside * 100).toFixed(1)}% 현재 주가 대비</em>}</p> : <p>희석주식수를 입력하면 주당가치 범위가 추가됩니다.</p>}</div><div className="result-metrics"><span><small>계산 가능</small><strong>{selected.filter((item) => item.ready).length}</strong></span><span><small>선택 방법</small><strong>{selected.length}</strong></span><span><small>현재 주가</small><strong>{company.currentSharePrice > 0 ? money(company.currentSharePrice) : "선택 입력"}</strong></span></div></div> : <div className="result-guidance"><strong>가치 계산에 필요한 다음 입력을 확인해 주세요.</strong><p>{selected.flatMap((item) => item.missing).filter(Boolean)[0] ?? "미래 전망 가정"}</p><a className="secondary-button" href="#assumptions">필수 전망 입력하기</a></div>}
+      <div className="applied-assumptions"><strong>적용된 시스템 가정</strong><span>WACC {(assumptions.wacc * 100).toFixed(1)}% · 영구성장률 {(assumptions.terminalGrowth * 100).toFixed(1)}% · 세율 {(assumptions.taxRate * 100).toFixed(1)}% · D&A {(assumptions.daPercentRevenue * 100).toFixed(1)}% · CAPEX {(assumptions.capexPercentRevenue * 100).toFixed(1)}%</span><small>ValueSite 시스템·업종 기본값이며 고급 모드에서 수정할 수 있습니다.</small></div>
+      <div className="method-status-grid">{selected.map((item) => { const range = rangeByMethod.get(item.method); const perShare = range ? toPerShareRange(range, company.sharesOutstanding) : null; return <article className={item.ready ? "ready" : "not-ready"} key={item.method}><div><strong>{METHOD_META[item.method].label}</strong><span>{item.ready ? "계산 가능" : "계산 준비 필요"}</span></div>{range ? <><b>{bn(range.equityBase)}</b><small>주주가치 범위 {bn(range.equityLow)} – {bn(range.equityHigh)}{range.metric ? ` · ${range.metric}` : ""}</small><p>{perShare ? `주당가치 ${money(perShare.base)}` : "희석주식수 입력 시 주당가치 표시"}</p></> : <p>{item.missing.join(" · ")} 필요</p>}</article>; })}</div>
     </section>
   </>;
 }

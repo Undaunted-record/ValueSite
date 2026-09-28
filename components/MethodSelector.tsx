@@ -15,7 +15,7 @@ export function MethodSelector() {
       <div className="section-heading">
         <div>
           <p className="section-kicker">02 · 평가 방법</p>
-          <h2>평가 방법</h2>
+          <h2>2단계 · 평가 방법 <span className="required-mark" aria-hidden="true">*</span><span className="sr-only"> 필수</span></h2>
           <p>계산 가능한 방법만 결과 범위에 포함됩니다.</p>
         </div>
       </div>

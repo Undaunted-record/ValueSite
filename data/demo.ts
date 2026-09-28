@@ -63,7 +63,7 @@ export const DEFAULT_ASSUMPTIONS: Assumptions = {
   targetEvRevenue: 1.1,
 };
 
-export const DEFAULT_METHODS: ValuationMethod[] = ["dcf", "evEbitda", "pe", "tradingComps"];
+export const DEFAULT_METHODS: ValuationMethod[] = ["dcf", "evEbitda", "pe"];
 
 export const DEMO_PEERS: PeerCompany[] = [
   { id: "1", company: "알파산업", enterpriseValue: 7200, marketCap: 6100, revenue: 7600, ebitda: 930, ebit: 690, netIncome: 500 },

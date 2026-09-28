@@ -18,3 +18,14 @@ export const INDUSTRY_RECOMMENDATIONS: Record<string, ValuationMethod[]> = {
   "소비재·유통": ["evEbitda", "pe", "tradingComps"],
   "M&A 대상기업": ["tradingComps", "dcf"],
 };
+
+// Educational starting points only. These are not live market observations.
+export const INDUSTRY_WACC_DEFAULTS: Record<string, number> = {
+  "성숙 제조업": 0.085,
+  "은행·금융": 0.09,
+  "고성장·적자기업": 0.12,
+  "기술·소프트웨어": 0.10,
+  "통신·인프라": 0.075,
+  "소비재·유통": 0.085,
+  "M&A 대상기업": 0.10,
+};

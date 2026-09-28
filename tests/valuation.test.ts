@@ -7,8 +7,9 @@ import { runSanityChecks } from "@/lib/valuation/sanityCheck";
 import { calculatePeerMultiples, calculateStats } from "@/lib/valuation/tradingComps";
 import { calculateWacc } from "@/lib/valuation/wacc";
 import { median, summarizeRanges } from "@/lib/valuation/summary";
-import { buildSimpleForecast } from "@/lib/valuation/forecast";
+import { buildSimpleForecast, getForecastRequirements } from "@/lib/valuation/forecast";
 import { assessMethodReadiness } from "@/lib/valuation/readiness";
+import { buildValuationValueRanges } from "@/lib/valuation/valueRanges";
 
 describe("valuation engine", () => {
   it("calculates a positive DCF enterprise value", () => {
@@ -96,6 +97,33 @@ describe("valuation engine", () => {
     expect(forecast).toHaveLength(3);
     expect(forecast[0].revenue).toBeCloseTo(6810 * 1.1);
     expect(forecast[0].ebit).toBeCloseTo(forecast[0].revenue * 0.12);
+  });
+
+  it("supports year-by-year forecast assumptions", () => {
+    const forecast = buildSimpleForecast(DEMO_COMPANY.financials.filter((item) => item.type === "actual"), ["2027E", "2028E", "2029E"], { revenueGrowth: [0.1, 0.05, 0], ebitMargin: [0.1, 0.11, 0.12], netMargin: [0.07, 0.08, 0.09] });
+    expect(forecast[0].revenue).toBeCloseTo(6810 * 1.1);
+    expect(forecast[1].revenue).toBeCloseTo(6810 * 1.1 * 1.05);
+    expect(forecast[2].ebit).toBeCloseTo(forecast[2].revenue * 0.12);
+  });
+
+  it("requires only the forecast fields used by selected methods", () => {
+    expect(getForecastRequirements(["dcf"])).toEqual({ revenueGrowth: true, ebitMargin: true, netMargin: false });
+    expect(getForecastRequirements(["pe"])).toEqual({ revenueGrowth: true, ebitMargin: false, netMargin: true });
+    expect(getForecastRequirements(["pb"])).toEqual({ revenueGrowth: false, ebitMargin: false, netMargin: false });
+  });
+
+  it("calculates total equity ranges without diluted shares", () => {
+    const withoutShares = { ...DEMO_COMPANY, sharesOutstanding: 0 };
+    const ranges = buildValuationValueRanges(withoutShares, DEFAULT_ASSUMPTIONS, ["dcf", "pe"], DEMO_PEERS, "gordon");
+    expect(ranges.map((range) => range.method)).toEqual(["dcf", "pe"]);
+    expect(ranges.every((range) => range.equityBase > 0)).toBe(true);
+  });
+
+  it("allows sub-6 and above-15 percent WACC with warnings", () => {
+    const low = runSanityChecks(DEMO_COMPANY, { ...DEFAULT_ASSUMPTIONS, wacc: 0.054 }, ["dcf"]);
+    const high = runSanityChecks(DEMO_COMPANY, { ...DEFAULT_ASSUMPTIONS, wacc: 0.165 }, ["dcf"]);
+    expect(low.some((issue) => issue.field === "wacc" && issue.severity === "warning")).toBe(true);
+    expect(high.some((issue) => issue.field === "wacc" && issue.severity === "warning")).toBe(true);
   });
 
   it("evaluates valuation methods independently", () => {

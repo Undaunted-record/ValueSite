@@ -109,10 +109,10 @@ export function DartCompanySearch() {
 
   return (
     <div className="dart-search-block">
-      <div className="dart-search-heading"><div><strong>OpenDART 기업 불러오기</strong><p>기업명 또는 종목코드로 최근 3개년 사업보고서를 불러옵니다.</p></div>{company.corpCode && <button className="secondary-button" disabled={status === "loading"} onClick={() => void loadCompany({ corpCode: company.corpCode!, corpName: company.name, stockCode: company.ticker, corpEngName: "", modifyDate: "" })}>다시 불러오기</button>}</div>
+      <div className="dart-search-heading"><div><strong>1단계 · 기업 검색{!company.name.trim() && <><span className="required-mark" aria-hidden="true"> *</span><span className="sr-only"> 필수</span></>}</strong><p>기업명 또는 종목코드로 최근 3개년 사업보고서를 불러옵니다.</p></div>{company.corpCode && <button className="secondary-button" disabled={status === "loading"} onClick={() => void loadCompany({ corpCode: company.corpCode!, corpName: company.name, stockCode: company.ticker, corpEngName: "", modifyDate: "" })}>다시 불러오기</button>}</div>
       <div className="company-search" role="combobox" aria-expanded={results.length > 0} aria-controls={listId} aria-haspopup="listbox">
         <span className="search-icon" aria-hidden="true">⌕</span>
-        <input ref={inputRef} aria-label="OpenDART 기업 검색" aria-autocomplete="list" aria-controls={listId} aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined} autoComplete="off" placeholder="예: 삼성전자 또는 005930" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onKeyDown} />
+        <input ref={inputRef} aria-label="OpenDART 기업 검색 필수" aria-required={!company.name.trim()} aria-autocomplete="list" aria-controls={listId} aria-activedescendant={activeIndex >= 0 ? `${listId}-${activeIndex}` : undefined} autoComplete="off" placeholder="예: 삼성전자 또는 005930" value={query} onChange={(event) => setQuery(event.target.value)} onKeyDown={onKeyDown} />
         {status === "searching" && <span className="status-pill" role="status">검색 중</span>}
       </div>
       {results.length > 0 && <ul className="dart-search-results" id={listId} role="listbox">{results.map((result, index) => <li id={`${listId}-${index}`} role="option" aria-selected={index === activeIndex} className={index === activeIndex ? "active" : ""} key={result.corpCode}><button onMouseEnter={() => setActiveIndex(index)} onClick={() => void loadCompany(result)}><span><strong>{result.corpName}</strong><small>{result.stockCode || "비상장"}</small></span><em>{result.stockCode ? "상장" : "비상장"}</em></button></li>)}</ul>}
