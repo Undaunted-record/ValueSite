@@ -13,7 +13,7 @@ const xml = `<?xml version="1.0" encoding="UTF-8"?><result>
   <list><corp_code>00401731</corp_code><corp_name>카카오</corp_name><corp_eng_name>Kakao</corp_eng_name><stock_code>035720</stock_code><modify_date>20260101</modify_date></list>
 </result>`;
 
-function row(accountId: string, accountName: string, amount: string, sjDiv: "BS" | "IS" = "IS"): DartAccountRow {
+function row(accountId: string, accountName: string, amount: string, sjDiv: "BS" | "IS" | "CF" = "IS"): DartAccountRow {
   return { account_id: accountId, account_nm: accountName, thstrm_amount: amount, sj_div: sjDiv };
 }
 
@@ -29,6 +29,7 @@ function statement(year: string, statementType: "CFS" | "OFS" = "CFS"): DartAnnu
       row("ifrs-full_ShorttermBorrowings", "단기차입금", "500,000,000", "BS"),
       row("ifrs-full_LongtermBorrowings", "장기차입금", "1,500,000,000", "BS"),
       row("ifrs-full_Equity", "자본총계", "6,000,000,000", "BS"),
+      row("ifrs-full_DepreciationAndAmortisationExpense", "감가상각비및무형자산상각비", "300,000,000", "CF"),
     ],
   };
 }
@@ -64,6 +65,7 @@ describe("OpenDART normalization", () => {
     expect(normalized.cash).toBe(2);
     expect(normalized.debt).toBe(2);
     expect(normalized.bookValue).toBe(6);
+    expect(normalized.da).toBe(0.3);
     expect(parseDartAmount("(1,000)")).toBe(-1000);
   });
 

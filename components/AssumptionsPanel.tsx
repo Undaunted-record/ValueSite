@@ -8,6 +8,7 @@ import { calculateEvBridge } from "@/lib/valuation/evBridge";
 import { calculateCostOfEquity, calculateWacc } from "@/lib/valuation/wacc";
 import { useValuationStore } from "@/store/useValuationStore";
 import type { Assumptions } from "@/types/valuation";
+import { ForecastBuilder } from "./ForecastBuilder";
 
 const advancedFields: Array<{ key: keyof Assumptions; label: string; scale: number; suffix: string }> = [
   { key: "riskFreeRate", label: "무위험수익률", scale: 100, suffix: "%" }, { key: "beta", label: "베타", scale: 1, suffix: "x" },
@@ -32,8 +33,10 @@ export function AssumptionsPanel() {
   };
 
   return (
-    <section id="dcf" className="panel section-panel input-panel">
-      <div className="section-heading"><div><p className="section-kicker">03 · 주요 가정</p><h2>가정을 직접 검증하세요</h2><p>슬라이더나 숫자 입력을 바꾸면 결과가 즉시 갱신됩니다.</p></div><button className="secondary-button" onClick={resetAssumptions}>모든 가정 초기화</button></div>
+    <section id="assumptions" className="panel section-panel input-panel">
+      <div className="section-heading"><div><p className="section-kicker">03 · 전망 및 주요 가정</p><h2>전망 및 DCF 가정</h2><p>미래 실적을 작성하고 핵심 가정을 검토합니다.</p></div><button className="secondary-button" onClick={resetAssumptions}>DCF 가정 초기화</button></div>
+      <ForecastBuilder />
+      <div className="subsection-heading"><h3>DCF 가정</h3><p>변경 내용은 계산 결과에 즉시 반영됩니다.</p></div>
       <div className="terminal-toggle"><span>최종가치 계산 방식</span><button aria-pressed={terminalMethod === "gordon"} className={terminalMethod === "gordon" ? "active" : ""} onClick={() => setTerminalMethod("gordon")}>고든 성장모형</button><button aria-pressed={terminalMethod === "exitMultiple"} className={terminalMethod === "exitMultiple" ? "active" : ""} onClick={() => setTerminalMethod("exitMultiple")}>출구배수</button></div>
       <div className="slider-grid">
         <AssumptionSlider label="WACC" description="미래 현금흐름의 위험을 반영한 할인율입니다." value={assumptions.wacc} defaultValue={DEFAULT_ASSUMPTIONS.wacc} min={0.06} max={0.15} step={0.001} scale={100} suffix="%" impactText={impact("wacc")} onChange={(value) => updateAssumption("wacc", value)} />

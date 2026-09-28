@@ -9,7 +9,7 @@ export const EMPTY_COMPANY: CompanyData = {
   preferredStock: 0,
   minorityInterest: 0,
   otherAdjustments: 0,
-  sharesOutstanding: 100,
+  sharesOutstanding: 0,
   currentSharePrice: 0,
   bookValue: 0,
   financials: [

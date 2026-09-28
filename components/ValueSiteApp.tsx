@@ -4,20 +4,22 @@ import { useState } from "react";
 import { AssumptionsPanel } from "./AssumptionsPanel";
 import { FinancialInputs } from "./FinancialInputs";
 import { MethodSelector } from "./MethodSelector";
-import { ResultsDashboard } from "./ResultsDashboard";
+import { AnalysisDetails, ResultsDashboard } from "./ResultsDashboard";
 import { TradingComps } from "./TradingComps";
-import { hasValuationInput } from "@/lib/valuation/summary";
 import { useValuationStore } from "@/store/useValuationStore";
+import { assessMethodReadiness } from "@/lib/valuation/readiness";
 
 export function ValueSiteApp() {
   const [mobileStage, setMobileStage] = useState<"input" | "assumptions" | "results">("input");
-  const { mode, setMode, company, dataSource, methods, loadDemo, reset } = useValuationStore();
-  const hasInput = hasValuationInput(company);
+  const { mode, setMode, company, dataSource, dartImport, methods, assumptions, peers, terminalMethod, loadDemo, reset } = useValuationStore();
+  const readiness = assessMethodReadiness(company, assumptions, peers, terminalMethod);
+  const dcfReady = methods.includes("dcf") && Boolean(readiness.find((item) => item.method === "dcf")?.ready);
+  const hasRange = company.sharesOutstanding > 0 && readiness.some((item) => methods.includes(item.method) && item.ready);
   const nav = [
-    ["financials", "기업·재무정보"], ["methods", "평가 방법"], ["dcf", "주요 가정"], ["summary", "결과 요약"],
-    ...(hasInput ? [["bridge", "EV 브리지"], ["football", "가치범위 비교"]] : []),
-    ...(hasInput && methods.includes("dcf") ? [["dcf-details", "DCF 상세 계산"]] : []),
-    ...(methods.includes("tradingComps") ? [["comps", "유사기업 비교"]] : []),
+    ["01", "financials", "기업·재무정보"], ["02", "methods", "평가 방법"], ["03", "assumptions", "전망 및 가정"], ["04", "summary", "결과 요약"],
+    ...(methods.includes("tradingComps") ? [["05", "comps", "유사기업 비교"]] : []),
+    ...(dcfReady ? [["06", "dcf-details", "DCF 상세 분석"], ["07", "bridge", "EV → 주주가치"]] : []),
+    ...(hasRange ? [["08", "football", "가치범위 비교"]] : []),
   ];
   const goTo = (id: string) => requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }));
   const startNew = () => { reset(); setMobileStage("input"); goTo("financials"); };
@@ -28,7 +30,7 @@ export function ValueSiteApp() {
     <div className="app-shell">
       <aside className="sidebar">
         <a className="brand" href="#top"><span>V</span><strong>ValueSite</strong></a>
-        <nav aria-label="주요 단계">{nav.map(([id, label], index) => <a href={`#${id}`} key={id}><i>{String(index + 1).padStart(2, "0")}</i>{label}</a>)}</nav>
+        <nav aria-label="주요 단계">{nav.map(([number, id, label]) => <a href={`#${id}`} key={id}><i>{number}</i>{label}</a>)}</nav>
         <div className="sidebar-note"><span>교육·분석용 도구</span><p>결과는 입력값과 가정에 따른 분석 자료이며 투자 권유가 아닙니다.</p></div>
       </aside>
       <main className={`main-area mobile-stage-${mobileStage}`} id="top">
@@ -36,16 +38,17 @@ export function ValueSiteApp() {
           <div><small>분석 대상기업</small><strong>{company.name || "새 밸류에이션"}</strong></div>
           <div className="topbar-actions"><span className={`source-badge ${dataSource}`}>{dataSource === "demo" ? "샘플 데이터" : dataSource === "dart" ? "OpenDART 공시" : dataSource === "user" ? "사용자 입력" : "입력 전"}</span><div className="mode-toggle" aria-label="밸류에이션 모드"><button aria-pressed={mode === "quick"} className={mode === "quick" ? "active" : ""} onClick={() => setMode("quick")}>간편</button><button aria-pressed={mode === "advanced"} className={mode === "advanced" ? "active" : ""} onClick={() => setMode("advanced")}>고급</button></div></div>
         </header>
-        <section className="landing">
-          <div className="landing-copy"><p className="eyebrow">무료 한국어 IB 밸류에이션 대시보드</p><h1>기업가치를 계산하고,<br /><span>가정을 검증하세요.</span></h1><p>핵심 재무정보를 입력하고 여러 평가 방법을 교차 검증하세요. 계산 근거와 가정 변화가 결과에 미치는 영향을 투명하게 보여드립니다.</p><div><button className="primary-button" onClick={startNew}>내 기업 평가 시작</button><button className="ghost-button" onClick={openDemo}>샘플 분석 보기</button></div></div>
-          <div className="landing-card" aria-hidden="true"><span className="live-dot">실시간 밸류에이션</span><div className="mini-price"><small>주당가치 범위</small><strong>저점 · 중앙값 · 고점</strong></div><div className="mini-field"><i /><i /><i /><i /></div><div className="feature-tags"><span>DCF</span><span>유사기업 비교</span><span>EV 브리지</span><span>가치범위 비교</span></div></div>
+        <section className="workspace-header">
+          <div><p className="eyebrow">VALUATION WORKSPACE</p><h1>{company.name || "새 기업 분석"}</h1><p>{company.ticker || "종목코드 없음"} · {company.industry}</p></div>
+          <div className="workspace-actions"><button className="primary-button" onClick={startNew}>새 분석</button><button className="secondary-button" onClick={openDemo}>샘플 보기</button></div>
+          <dl><div><dt>데이터 기준</dt><dd>{dartImport ? `${dartImport.latestYear}년 사업보고서` : "직접 입력"}</dd></div><div><dt>재무제표</dt><dd>{dartImport ? (dartImport.statementType === "CFS" ? "연결" : "별도") : "—"}</dd></div><div><dt>마지막 갱신</dt><dd>{dartImport ? new Date(dartImport.fetchedAt).toLocaleDateString("ko-KR") : "—"}</dd></div><div><dt>저장 상태</dt><dd>이 브라우저에 자동 저장</dd></div></dl>
         </section>
-        <div className="mobile-toolbar"><div className="mobile-mode"><span>{mode === "quick" ? "간편 모드 · 핵심 가정" : "고급 모드 · 세부 가정"}</span><div className="mode-toggle"><button aria-pressed={mode === "quick"} className={mode === "quick" ? "active" : ""} onClick={() => setMode("quick")}>간편</button><button aria-pressed={mode === "advanced"} className={mode === "advanced" ? "active" : ""} onClick={() => setMode("advanced")}>고급</button></div></div><nav className="mobile-steps" aria-label="모바일 단계 이동"><button className={mobileStage === "input" ? "active" : ""} aria-pressed={mobileStage === "input"} onClick={() => goStage("input", "financials")}>입력</button><button className={mobileStage === "assumptions" ? "active" : ""} aria-pressed={mobileStage === "assumptions"} onClick={() => goStage("assumptions", "dcf")}>가정</button><button className={mobileStage === "results" ? "active" : ""} aria-pressed={mobileStage === "results"} onClick={() => goStage("results", "summary")}>결과</button></nav></div>
+        <div className="mobile-toolbar"><div className="mobile-mode"><span>{mode === "quick" ? "간편 모드 · 핵심 가정" : "고급 모드 · 세부 가정"}</span><div className="mode-toggle"><button aria-pressed={mode === "quick"} className={mode === "quick" ? "active" : ""} onClick={() => setMode("quick")}>간편</button><button aria-pressed={mode === "advanced"} className={mode === "advanced" ? "active" : ""} onClick={() => setMode("advanced")}>고급</button></div></div><nav className="mobile-steps" aria-label="모바일 단계 이동"><button className={mobileStage === "input" ? "active" : ""} aria-pressed={mobileStage === "input"} onClick={() => goStage("input", "financials")}>입력</button><button className={mobileStage === "assumptions" ? "active" : ""} aria-pressed={mobileStage === "assumptions"} onClick={() => goStage("assumptions", "assumptions")}>가정</button><button className={mobileStage === "results" ? "active" : ""} aria-pressed={mobileStage === "results"} onClick={() => goStage("results", "summary")}>결과</button></nav></div>
         <div className="workflow-label input-label">입력과 가정</div>
         <FinancialInputs /><MethodSelector /><AssumptionsPanel />
         <div className="workflow-label results-label">결과와 상세 분석</div>
-        <ResultsDashboard /><TradingComps />
-        <footer><strong>ValueSite</strong><span>기업가치를 계산하고, 가정을 검증하세요.</span><small>© 2026 · 교육 및 분석 목적으로만 제공됩니다.</small></footer>
+        <ResultsDashboard /><TradingComps /><AnalysisDetails />
+        <footer><strong>ValueSite</strong><span>입력값과 가정에 기반한 교육·분석용 도구입니다.</span><small>© 2026</small></footer>
       </main>
     </div>
   );

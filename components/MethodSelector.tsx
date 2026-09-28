@@ -15,8 +15,8 @@ export function MethodSelector() {
       <div className="section-heading">
         <div>
           <p className="section-kicker">02 · 평가 방법</p>
-          <h2>여러 방법으로 교차 검증하세요</h2>
-          <p>실무에서는 복수 방법을 함께 검토합니다. 추천 방법은 일반적인 관행이며 절대적인 기준은 아닙니다.</p>
+          <h2>평가 방법</h2>
+          <p>계산 가능한 방법만 결과 범위에 포함됩니다.</p>
         </div>
       </div>
       <div className="recommendation-bar">

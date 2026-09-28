@@ -61,6 +61,12 @@ const CASH_IDS = ["ifrs-full_CashAndCashEquivalents"];
 const CASH_NAMES = ["현금및현금성자산", "현금및현금성자산의합계"];
 const EQUITY_IDS = ["ifrs-full_Equity", "ifrs-full_EquityAttributableToOwnersOfParent"];
 const EQUITY_NAMES = ["자본총계", "지배기업소유주지분", "지배기업의소유주에게귀속되는자본"];
+const DA_COMBINED_IDS = ["ifrs-full_DepreciationAndAmortisationExpense"];
+const DA_COMBINED_NAMES = ["감가상각비및무형자산상각비", "감가상각비와무형자산상각비"];
+const DEPRECIATION_IDS = ["ifrs-full_DepreciationExpense"];
+const DEPRECIATION_NAMES = ["감가상각비"];
+const AMORTIZATION_IDS = ["ifrs-full_AmortisationExpense"];
+const AMORTIZATION_NAMES = ["무형자산상각비"];
 
 const DEBT_CATEGORIES = [
   { ids: ["ifrs-full_ShorttermBorrowings"], names: ["단기차입금"] },
@@ -98,6 +104,10 @@ export function normalizeFinancialStatements(corpCode: string, statements: DartA
   const latest = sorted.at(-1)!;
   const cash = findAccount(latest.rows, latest.year, latest.statementType, "cash", CASH_IDS, CASH_NAMES, ["BS"]);
   const bookValue = findAccount(latest.rows, latest.year, latest.statementType, "bookValue", EQUITY_IDS, EQUITY_NAMES, ["BS"]);
+  const daCombined = findAccount(latest.rows, latest.year, latest.statementType, "da", DA_COMBINED_IDS, DA_COMBINED_NAMES, ["CF"]);
+  const depreciation = findAccount(latest.rows, latest.year, latest.statementType, "depreciation", DEPRECIATION_IDS, DEPRECIATION_NAMES, ["CF"]);
+  const amortization = findAccount(latest.rows, latest.year, latest.statementType, "amortization", AMORTIZATION_IDS, AMORTIZATION_NAMES, ["CF"]);
+  const da = daCombined?.value ?? ((depreciation?.value ?? 0) + (amortization?.value ?? 0) || undefined);
   const debtParts = DEBT_CATEGORIES.map((category, index) => findAccount(
     latest.rows,
     latest.year,
@@ -111,6 +121,11 @@ export function normalizeFinancialStatements(corpCode: string, statements: DartA
 
   if (cash) sources.cash = cash.source; else missingFields.push("cash");
   if (bookValue) sources.bookValue = bookValue.source; else missingFields.push("bookValue");
+  if (daCombined) sources.da = daCombined.source;
+  else if (da !== undefined) {
+    const first = depreciation ?? amortization!;
+    sources.da = { ...first.source, field: "da", accountName: [depreciation, amortization].filter(Boolean).map((item) => item!.source.accountName).join(" + "), rawAmount: [depreciation, amortization].filter(Boolean).reduce((sum, item) => sum + item!.source.rawAmount, 0) };
+  } else missingFields.push("da");
   if (debtParts.length) {
     sources.debt = { ...debtParts[0].source, field: "debt", accountName: debtParts.map((part) => part.source.accountName).join(" + "), rawAmount: debtParts.reduce((sum, part) => sum + part.source.rawAmount, 0) };
   } else missingFields.push("debt");
@@ -123,6 +138,7 @@ export function normalizeFinancialStatements(corpCode: string, statements: DartA
     cash: cash?.value,
     debt,
     bookValue: bookValue?.value,
+    da,
     metadata: {
       corpCode,
       corpName: "",

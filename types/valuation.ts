@@ -55,12 +55,22 @@ export interface Assumptions {
 export interface PeerCompany {
   id: string;
   company: string;
+  ticker?: string;
+  corpCode?: string;
   enterpriseValue: number;
   marketCap: number;
   revenue: number;
   ebitda: number;
   ebit: number;
   netIncome: number;
+  bookValue?: number;
+  cash?: number;
+  debt?: number;
+  financialYear?: string;
+  statementType?: DartStatementType;
+  fetchedAt?: string;
+  source?: "dart" | "user" | "demo";
+  missingFields?: string[];
 }
 
 export interface DcfProjection {

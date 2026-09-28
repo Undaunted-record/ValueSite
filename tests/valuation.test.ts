@@ -7,6 +7,8 @@ import { runSanityChecks } from "@/lib/valuation/sanityCheck";
 import { calculatePeerMultiples, calculateStats } from "@/lib/valuation/tradingComps";
 import { calculateWacc } from "@/lib/valuation/wacc";
 import { median, summarizeRanges } from "@/lib/valuation/summary";
+import { buildSimpleForecast } from "@/lib/valuation/forecast";
+import { assessMethodReadiness } from "@/lib/valuation/readiness";
 
 describe("valuation engine", () => {
   it("calculates a positive DCF enterprise value", () => {
@@ -87,5 +89,24 @@ describe("valuation engine", () => {
     const ranges = buildValuationRanges(DEMO_COMPANY, DEFAULT_ASSUMPTIONS, ["dcf", "pe"], DEMO_PEERS, "gordon");
     expect(ranges.map((range) => range.method)).toEqual(["dcf", "pe"]);
     expect(ranges.every((range) => range.low < range.high)).toBe(true);
+  });
+
+  it("builds transparent three-year forecasts from growth and margins", () => {
+    const forecast = buildSimpleForecast(DEMO_COMPANY.financials.filter((item) => item.type === "actual"), ["2027E", "2028E", "2029E"], { revenueGrowth: 0.1, ebitMargin: 0.12, netMargin: 0.08 });
+    expect(forecast).toHaveLength(3);
+    expect(forecast[0].revenue).toBeCloseTo(6810 * 1.1);
+    expect(forecast[0].ebit).toBeCloseTo(forecast[0].revenue * 0.12);
+  });
+
+  it("evaluates valuation methods independently", () => {
+    const noForecast = { ...DEMO_COMPANY, financials: DEMO_COMPANY.financials.map((item) => item.type === "estimate" ? { ...item, revenue: 0, ebit: 0, netIncome: 0 } : item) };
+    const readiness = assessMethodReadiness(noForecast, DEFAULT_ASSUMPTIONS, DEMO_PEERS, "gordon");
+    expect(readiness.find((item) => item.method === "dcf")?.ready).toBe(false);
+    expect(readiness.find((item) => item.method === "pb")?.ready).toBe(true);
+  });
+
+  it("does not create peer multiples without market value", () => {
+    const peer = { ...DEMO_PEERS[0], enterpriseValue: 0, marketCap: 0 };
+    expect(calculatePeerMultiples([peer])[0]).toMatchObject({ evRevenue: null, evEbitda: null, pe: null });
   });
 });

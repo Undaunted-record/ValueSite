@@ -6,6 +6,7 @@ export interface PeerMultiples {
   evEbitda: number | null;
   evEbit: number | null;
   pe: number | null;
+  pb: number | null;
 }
 
 export interface MultipleStats {
@@ -20,10 +21,11 @@ export interface MultipleStats {
 export function calculatePeerMultiples(peers: PeerCompany[]): PeerMultiples[] {
   return peers.map((peer) => ({
     company: peer.company,
-    evRevenue: peer.revenue > 0 ? peer.enterpriseValue / peer.revenue : null,
-    evEbitda: peer.ebitda > 0 ? peer.enterpriseValue / peer.ebitda : null,
-    evEbit: peer.ebit > 0 ? peer.enterpriseValue / peer.ebit : null,
-    pe: peer.netIncome > 0 ? peer.marketCap / peer.netIncome : null,
+    evRevenue: peer.enterpriseValue > 0 && peer.revenue > 0 ? peer.enterpriseValue / peer.revenue : null,
+    evEbitda: peer.enterpriseValue > 0 && peer.ebitda > 0 ? peer.enterpriseValue / peer.ebitda : null,
+    evEbit: peer.enterpriseValue > 0 && peer.ebit > 0 ? peer.enterpriseValue / peer.ebit : null,
+    pe: peer.marketCap > 0 && peer.netIncome > 0 ? peer.marketCap / peer.netIncome : null,
+    pb: peer.marketCap > 0 && (peer.bookValue ?? 0) > 0 ? peer.marketCap / peer.bookValue! : null,
   }));
 }
 

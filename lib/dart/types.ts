@@ -51,6 +51,7 @@ export interface NormalizedDartFinancials {
   cash?: number;
   debt?: number;
   bookValue?: number;
+  da?: number;
   metadata: DartImportMeta;
 }
 

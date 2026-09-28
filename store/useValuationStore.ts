@@ -21,6 +21,8 @@ interface ValuationState {
   applyDartImport: (overview: DartCompanyOverview, imported: NormalizedDartFinancials, includeIdentity: boolean) => void;
   updateCompany: (patch: Partial<CompanyData>) => void;
   updateFinancial: (index: number, field: "revenue" | "ebit" | "netIncome", value: number) => void;
+  applyForecast: (values: Array<Pick<CompanyData["financials"][number], "revenue" | "ebit" | "netIncome">>) => void;
+  resetForecast: () => void;
   updateAssumption: (field: keyof Assumptions, value: number) => void;
   toggleMethod: (method: ValuationMethod) => void;
   setTerminalMethod: (method: TerminalMethod) => void;
@@ -65,6 +67,18 @@ export const useValuationStore = create<ValuationState>()(
           editedFields: [...new Set([...state.dartImport.editedFields, `financials.${state.company.financials[index]?.year.replace(/[AE]$/, "")}.${field}`])],
         } : null,
       })),
+      applyForecast: (values) => set((state) => ({
+        company: {
+          ...state.company,
+          financials: state.company.financials.map((period, index) => period.type === "estimate"
+            ? { ...period, ...values[state.company.financials.slice(0, index).filter((item) => item.type === "estimate").length] }
+            : period),
+        },
+        dataSource: state.dataSource === "dart" ? "dart" : "user",
+      })),
+      resetForecast: () => set((state) => ({
+        company: { ...state.company, financials: state.company.financials.map((period) => period.type === "estimate" ? { ...period, revenue: 0, ebit: 0, netIncome: 0 } : period) },
+      })),
       updateAssumption: (field, value) => set((state) => ({ assumptions: { ...state.assumptions, [field]: value } })),
       toggleMethod: (method) => set((state) => {
         if (state.methods.includes(method) && state.methods.length === 1) return state;
@@ -79,7 +93,7 @@ export const useValuationStore = create<ValuationState>()(
     }),
     {
       name: "valuesite-valuation-ko-v3",
-      version: 4,
+      version: 5,
       migrate: (persisted) => ({ ...(persisted as ValuationState), dartImport: null }),
     },
   ),

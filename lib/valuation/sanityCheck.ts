@@ -3,10 +3,10 @@ import type { Assumptions, CompanyData, TerminalMethod, ValidationIssue, Valuati
 export function runSanityChecks(company: CompanyData, assumptions: Assumptions, methods: ValuationMethod[], terminalMethod: TerminalMethod = "gordon"): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
   const latest = company.financials.at(-1);
-  if (company.sharesOutstanding <= 0) issues.push({ severity: "error", field: "sharesOutstanding", message: "희석주식수는 0보다 커야 합니다." });
-  if (terminalMethod === "gordon" && assumptions.terminalGrowth >= assumptions.wacc) issues.push({ severity: "error", field: "terminalGrowth", message: "영구성장률은 WACC보다 낮아야 합니다." });
+  if (company.sharesOutstanding <= 0) issues.push({ severity: "warning", field: "sharesOutstanding", message: "희석주식수를 입력하기 전까지 주당가치는 표시하지 않습니다." });
+  if (methods.includes("dcf") && terminalMethod === "gordon" && assumptions.terminalGrowth >= assumptions.wacc) issues.push({ severity: "error", field: "terminalGrowth", message: "DCF 계산을 위해 영구성장률은 WACC보다 낮아야 합니다." });
   if (company.debt < 0 || company.cash < 0) issues.push({ severity: "error", field: "netDebt", message: "현금과 차입금에는 음수를 입력할 수 없습니다." });
-  if (latest && latest.revenue <= 0) issues.push({ severity: "error", field: "revenue", message: "최종 추정연도 매출액은 0보다 커야 합니다." });
+  if (latest && latest.revenue <= 0) issues.push({ severity: "warning", field: "revenue", message: "최종 추정연도 매출액이 없어 일부 평가 방법을 계산할 수 없습니다." });
   if (assumptions.wacc < 0.04 || assumptions.wacc > 0.2) issues.push({ severity: "warning", field: "wacc", message: "WACC가 일반적인 검토 범위인 4%~20%를 벗어났습니다." });
   if (terminalMethod === "gordon" && (assumptions.terminalGrowth < 0 || assumptions.terminalGrowth > 0.05)) issues.push({ severity: "warning", field: "terminalGrowth", message: "영구성장률이 일반적인 검토 범위인 0%~5%를 벗어났습니다." });
   const ebitda = latest ? latest.ebit + latest.revenue * assumptions.daPercentRevenue : 0;
