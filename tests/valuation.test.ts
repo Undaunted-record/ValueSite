@@ -109,4 +109,11 @@ describe("valuation engine", () => {
     const peer = { ...DEMO_PEERS[0], enterpriseValue: 0, marketCap: 0 };
     expect(calculatePeerMultiples([peer])[0]).toMatchObject({ evRevenue: null, evEbitda: null, pe: null });
   });
+
+  it("does not mark net cash as a valid valuation method without forecasts", () => {
+    const noForecast = { ...DEMO_COMPANY, financials: DEMO_COMPANY.financials.map((item) => item.type === "estimate" ? { ...item, revenue: 0, ebit: 0, netIncome: 0 } : item) };
+    const ready = new Set(assessMethodReadiness(noForecast, DEFAULT_ASSUMPTIONS, [], "gordon").filter((item) => item.ready).map((item) => item.method));
+    const ranges = buildValuationRanges(noForecast, DEFAULT_ASSUMPTIONS, ["dcf", "evEbitda", "pe", "tradingComps"], [], "gordon").filter((range) => ready.has(range.method));
+    expect(ranges).toEqual([]);
+  });
 });

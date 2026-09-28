@@ -18,9 +18,10 @@ function useResults() {
   const { company, assumptions, methods, peers, terminalMethod } = state;
   const readiness = assessMethodReadiness(company, assumptions, peers, terminalMethod);
   const selected = readiness.filter((item) => methods.includes(item.method));
+  const readyMethods = new Set(selected.filter((item) => item.ready).map((item) => item.method));
   const dcf = calculateDcf(company, assumptions, terminalMethod);
   const bridge = calculateEvBridge(dcf.enterpriseValue, company);
-  const ranges = company.sharesOutstanding > 0 ? buildValuationRanges(company, assumptions, methods, peers, terminalMethod) : [];
+  const ranges = company.sharesOutstanding > 0 ? buildValuationRanges(company, assumptions, methods, peers, terminalMethod).filter((range) => readyMethods.has(range.method)) : [];
   return { ...state, selected, dcf, bridge, summary: summarizeRanges(ranges) };
 }
 
