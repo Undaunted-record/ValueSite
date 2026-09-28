@@ -85,7 +85,7 @@ export const useValuationStore = create<ValuationState>()(
         return { methods: state.methods.includes(method) ? state.methods.filter((item) => item !== method) : [...state.methods, method] };
       }),
       setTerminalMethod: (terminalMethod) => set({ terminalMethod }),
-      setPeers: (peers) => set({ peers, dataSource: "user" }),
+      setPeers: (peers) => set({ peers }),
       resetAssumptions: () => set({ assumptions: DEFAULT_ASSUMPTIONS, terminalMethod: "gordon" }),
       resetPeers: () => set((state) => ({ peers: state.company.ticker === "DEMO" ? DEMO_PEERS : [] })),
       loadDemo: () => set({ company: DEMO_COMPANY, assumptions: DEFAULT_ASSUMPTIONS, methods: DEFAULT_METHODS, peers: DEMO_PEERS, mode: "quick", terminalMethod: "gordon", dataSource: "demo", dartImport: null }),
@@ -93,8 +93,16 @@ export const useValuationStore = create<ValuationState>()(
     }),
     {
       name: "valuesite-valuation-ko-v3",
-      version: 5,
-      migrate: (persisted) => ({ ...(persisted as ValuationState), dartImport: null }),
+      version: 6,
+      migrate: (persisted, version) => {
+        const state = persisted as ValuationState;
+        const clearLegacyPlaceholder = version < 6 && state.dataSource === "dart" && state.company?.sharesOutstanding === 100 && state.company?.currentSharePrice === 0;
+        return {
+          ...state,
+          company: clearLegacyPlaceholder ? { ...state.company, sharesOutstanding: 0 } : state.company,
+          dartImport: state.dartImport ?? null,
+        };
+      },
     },
   ),
 );
