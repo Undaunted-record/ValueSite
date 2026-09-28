@@ -93,12 +93,14 @@ export const useValuationStore = create<ValuationState>()(
     }),
     {
       name: "valuesite-valuation-ko-v3",
-      version: 6,
+      version: 7,
       migrate: (persisted, version) => {
         const state = persisted as ValuationState;
-        const clearLegacyPlaceholder = version < 6 && state.dataSource === "dart" && state.company?.sharesOutstanding === 100 && state.company?.currentSharePrice === 0;
+        const legacyDartAnalysis = version < 7 && Boolean(state.company?.corpCode);
+        const clearLegacyPlaceholder = legacyDartAnalysis && state.company?.sharesOutstanding === 100 && state.company?.currentSharePrice === 0;
         return {
           ...state,
+          dataSource: legacyDartAnalysis && state.dataSource === "user" ? "dart" : state.dataSource,
           company: clearLegacyPlaceholder ? { ...state.company, sharesOutstanding: 0 } : state.company,
           dartImport: state.dartImport ?? null,
         };
